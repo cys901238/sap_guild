@@ -1,0 +1,15 @@
+.gradle/
+gradle-dist/
+gradle.zip
+gradle/
+local.properties
+app/build/
+.gradle-dist/
+.gradle/
+.gradle-*
+build/
+bin/
+*.iml
+.idea/
+*.apk
+*/build/
