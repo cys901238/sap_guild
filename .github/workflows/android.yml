@@ -21,19 +21,22 @@ jobs:
     - name: Install required packages
       run: |
         sudo apt-get update
-        sudo apt-get install -y unzip wget gradle
+        sudo apt-get install -y unzip wget gradle android-tools-adb
     - name: Install Android commandline tools
       run: |
         mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
         cd $ANDROID_SDK_ROOT/cmdline-tools
         wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline.zip
-        unzip cmdline.zip -d latest
-        mv latest/cmdline-tools latest/latest || true
+        unzip cmdline.zip -d temp
+        # place commandlinetools at $ANDROID_SDK_ROOT/cmdline-tools/latest
+        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
+        mv temp/cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/ || true
     - name: Debug: environment info
       run: |
         echo "PATH=$PATH"
         java -version || true
         which gradle || true
+        which adb || true
         echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
         ls -la $ANDROID_SDK_ROOT || true
     - name: Install Android SDK packages
@@ -41,8 +44,12 @@ jobs:
         set -x
         $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --list || true
         yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+        # accept licenses
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses || true
     - name: Add platform-tools to PATH
       run: echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
+    - name: Set ANDROID_HOME
+      run: echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
     - name: Cache Gradle
       uses: actions/cache@v4
       with:
