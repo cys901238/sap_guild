@@ -59,16 +59,37 @@ jobs:
         key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
         restore-keys: |
           ${{ runner.os }}-gradle-
+    - name: Debug: list project files and gradle config
+      run: |
+        echo "--- workspace ---"
+        ls -la
+        echo "--- app dir ---"
+        ls -la app || true
+        echo "--- gradle files ---"
+        for f in build.gradle settings.gradle settings.gradle.kts gradle.properties gradlew gradle/wrapper/gradle-wrapper.jar; do
+          echo "---- $f ----"
+          if [ -f "$f" ]; then
+            stat "$f" || true
+            sed -n '1,200p' "$f" || true
+          else
+            echo "(missing) $f"
+          fi
+        done
     - name: Build assembleDebug
       run: |
         set -x
         # prefer project wrapper if usable, otherwise fall back to system gradle
         if [ -x ./gradlew ]; then
+          echo "Using ./gradlew"
           ./gradlew assembleDebug --no-daemon || true
+        else
+          echo "No gradlew executable, using system gradle"
         fi
         if [ ! -f app/build/outputs/apk/debug/app-debug.apk ]; then
+          echo "Running system gradle"
           gradle assembleDebug --no-daemon
         fi
+        echo "build exit status: $?"
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
