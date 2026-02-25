@@ -46,17 +46,31 @@ jobs:
           preflight2.txt
     - name: Install required packages
       run: |
-        sudo apt-get update
-        sudo apt-get install -y unzip wget gradle android-tools-adb
+        set -x
+        sudo apt-get update > install_pkgs.log 2>&1 || true
+        sudo apt-get install -y unzip wget gradle android-tools-adb >> install_pkgs.log 2>&1 || true
+        tail -n 200 install_pkgs.log || true
+    - name: Upload install packages log
+      uses: actions/upload-artifact@v4
+      with:
+        name: install_pkgs_log
+        path: install_pkgs.log
     - name: Install Android commandline tools
       run: |
+        set -x
         mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
         cd $ANDROID_SDK_ROOT/cmdline-tools
-        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline.zip
-        unzip cmdline.zip -d temp
+        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline.zip > cmdline_download.log 2>&1 || true
+        unzip cmdline.zip -d temp >> cmdline_download.log 2>&1 || true
         # place commandlinetools at $ANDROID_SDK_ROOT/cmdline-tools/latest
         mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
-        mv temp/cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/ || true
+        mv temp/cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/ >> cmdline_download.log 2>&1 || true
+        tail -n 200 cmdline_download.log || true
+    - name: Upload cmdline download log
+      uses: actions/upload-artifact@v4
+      with:
+        name: cmdline_download_log
+        path: cmdline_download.log
     - name: Debug: environment info
       run: |
         echo "PATH=$PATH"
@@ -68,10 +82,19 @@ jobs:
     - name: Install Android SDK packages
       run: |
         set -x
-        $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --list || true
-        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+        $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --list > sdkmanager_pre_list.log 2>&1 || true
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "platforms;android-33" "build-tools;33.0.2" > sdkmanager_install.log 2>&1 || true
         # accept licenses
-        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses || true
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses > sdkmanager_licenses.log 2>&1 || true
+        tail -n 200 sdkmanager_install.log || true
+    - name: Upload sdkmanager logs
+      uses: actions/upload-artifact@v4
+      with:
+        name: sdkmanager-logs
+        path: |
+          sdkmanager_pre_list.log
+          sdkmanager_install.log
+          sdkmanager_licenses.log
     - name: Dump sdkmanager list to file
       run: |
         set -x || true
@@ -118,11 +141,17 @@ jobs:
         DIST=gradle-8.5-bin.zip
         if [ ! -f "$DIST" ]; then
           echo "Downloading gradle distribution"
-          wget https://services.gradle.org/distributions/$DIST -O $DIST || true
+          wget https://services.gradle.org/distributions/$DIST -O $DIST > gradle_download.log 2>&1 || true
         else
-          echo "Gradle distribution already present"
+          echo "Gradle distribution already present" > gradle_download.log 2>&1 || true
         fi
         ls -lah "$DIST" || true
+        tail -n 200 gradle_download_log || true || true
+    - name: Upload gradle download log
+      uses: actions/upload-artifact@v4
+      with:
+        name: gradle-download-log
+        path: gradle_download.log
     - name: Create gradle distribution info
       run: |
         set -x || true
