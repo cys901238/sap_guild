@@ -1,0 +1,28 @@
+name: CI Runner Smoke Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run quick commands and produce artifact
+        run: |
+          set -x
+          echo "smoke test" > smoke.txt
+          uname -a > smoke-uname.txt
+          df -h > smoke-df.txt
+          ls -la > smoke-ls.txt
+      - name: Upload smoke artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-artifact
+          path: |
+            smoke.txt
+            smoke-uname.txt
+            smoke-df.txt
+            smoke-ls.txt

@@ -18,6 +18,29 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '11'
+    - name: Preflight: capture runner environment and upload
+      run: |
+        set -x
+        echo "HOSTNAME=$(hostname)" > preflight.txt
+        echo "Date: $(date -u)" >> preflight.txt
+        echo "UID: $(id)" >> preflight.txt
+        echo "CWD: $(pwd)" >> preflight.txt
+        echo "Disk usage:" >> preflight.txt
+        df -h >> preflight.txt || true
+        echo "List workspace:" >> preflight.txt
+        ls -la > workspace-list.txt || true
+        echo "Kernel and uname:" >> preflight.txt
+        uname -a >> preflight.txt || true
+        echo "Env sample:" >> preflight.txt
+        env | sort | head -n 200 >> preflight.txt || true
+      # always upload the preflight so we have early artifacts even on fast failures
+    - name: Upload preflight artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: preflight
+        path: |
+          preflight.txt
+          workspace-list.txt
     - name: Install required packages
       run: |
         sudo apt-get update
