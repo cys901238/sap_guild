@@ -72,6 +72,17 @@ jobs:
         yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "platforms;android-33" "build-tools;33.0.2"
         # accept licenses
         yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses || true
+    - name: Upload sdkmanager output
+      uses: actions/upload-artifact@v4
+      with:
+        name: sdkmanager-list
+        path: |
+          $(pwd)/sdkmanager-list.txt
+      continue-on-error: true
+    - name: Dump sdkmanager list to file
+      run: |
+        set -x || true
+        $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --list > sdkmanager-list.txt || true
     - name: Add platform-tools to PATH
       run: echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
     - name: Set ANDROID_HOME
@@ -107,11 +118,21 @@ jobs:
         DIST=gradle-8.5-bin.zip
         if [ ! -f "$DIST" ]; then
           echo "Downloading gradle distribution"
-          wget https://services.gradle.org/distributions/$DIST -O $DIST
+          wget https://services.gradle.org/distributions/$DIST -O $DIST || true
         else
           echo "Gradle distribution already present"
         fi
         ls -lah "$DIST" || true
+    - name: Upload gradle distribution info
+      run: |
+        set -x || true
+        echo "Listing gradle wrapper dir" > gradle-info.txt || true
+        ls -la gradle || true >> gradle-info.txt || true
+        ls -la gradle/wrapper || true >> gradle-info.txt || true
+      uses: actions/upload-artifact@v4
+      with:
+        name: gradle-info
+        path: gradle-info.txt
     - name: Verify wrapper and Gradle
       run: |
         set -x
@@ -124,6 +145,14 @@ jobs:
           gradle --version || true
           gradle projects || true
         fi
+    - name: Upload gradle wrapper output
+      uses: actions/upload-artifact@v4
+      with:
+        name: gradle-wrapper-output
+        path: |
+          gradle-info.txt
+          gradle/wrapper/gradle-wrapper.properties
+          gradle/wrapper/gradle-wrapper.jar
     - name: Build assembleDebug (capture logs)
       run: |
         set -x
