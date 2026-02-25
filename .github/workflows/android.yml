@@ -33,6 +33,8 @@ jobs:
         uname -a >> preflight.txt || true
         echo "Env sample:" >> preflight.txt
         env | sort | head -n 200 >> preflight.txt || true
+        # also write a tiny always-present file
+        echo "preflight-ok" > preflight2.txt || true
       # always upload the preflight so we have early artifacts even on fast failures
     - name: Upload preflight artifact
       uses: actions/upload-artifact@v4
@@ -41,6 +43,7 @@ jobs:
         path: |
           preflight.txt
           workspace-list.txt
+          preflight2.txt
     - name: Install required packages
       run: |
         sudo apt-get update
