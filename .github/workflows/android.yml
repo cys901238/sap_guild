@@ -75,21 +75,72 @@ jobs:
             echo "(missing) $f"
           fi
         done
-    - name: Build assembleDebug
+    - name: Prepare Gradle distribution (download if missing)
       run: |
         set -x
-        # prefer project wrapper if usable, otherwise fall back to system gradle
-        if [ -x ./gradlew ]; then
-          echo "Using ./gradlew"
-          ./gradlew assembleDebug --no-daemon || true
+        DIST=gradle-8.5-bin.zip
+        if [ ! -f "$DIST" ]; then
+          echo "Downloading gradle distribution"
+          wget https://services.gradle.org/distributions/$DIST -O $DIST
         else
-          echo "No gradlew executable, using system gradle"
+          echo "Gradle distribution already present"
         fi
-        if [ ! -f app/build/outputs/apk/debug/app-debug.apk ]; then
-          echo "Running system gradle"
-          gradle assembleDebug --no-daemon
+        ls -lah "$DIST" || true
+    - name: Verify wrapper and Gradle
+      run: |
+        set -x
+        echo "./gradlew --version"
+        if [ -x ./gradlew ]; then
+          ./gradlew --version || true
+          ./gradlew projects --no-daemon || true
+        else
+          echo "No gradlew executable"
+          gradle --version || true
+          gradle projects || true
         fi
-        echo "build exit status: $?"
+    - name: Build assembleDebug (capture logs)
+      run: |
+        set -x
+        # capture env
+        env > env.txt || true
+        echo "JAVA=" $(java -version 2>&1 | head -n 1) || true
+        which java || true
+        echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+        ls -la $ANDROID_SDK_ROOT || true
+        which adb || true
+        adb --version || true
+        # run build and capture logs to build.log
+        if [ -x ./gradlew ]; then
+          ./gradlew assembleDebug --no-daemon --stacktrace > build.log 2>&1 || true
+        else
+          gradle assembleDebug --no-daemon --stacktrace > build.log 2>&1 || true
+        fi
+        # always show tail of log for quick visibility
+        tail -n +1 build.log | sed -n '1,200p' || true
+        ls -la app/build/outputs/apk/debug || true
+    - name: Upload build.log artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-log
+        path: build.log
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug-apk
+        path: app/build/outputs/apk/debug/app-debug.apk
+    - name: On failure: collect workspace and logs
+      if: failure()
+      run: |
+        set -x || true
+        echo "Collecting workspace for debugging"
+        tar -czf workspace-debug.tar.gz . || true
+      # Upload the collected tarball so logs are available even if run fails quickly
+    - name: Upload debug artifact
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: workspace-debug
+        path: workspace-debug.tar.gz
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
